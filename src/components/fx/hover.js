@@ -365,7 +365,7 @@ function _hover(gd, evt, subplot, noHoverEvent) {
     // find the closest point in each trace
     // this is minimum dx and/or dy, depending on mode
     // and the pixel position for the label (labelXpx, labelYpx)
-    function findHoverPoints(vals) {
+    function findHoverPoints(userXVal, userYVal) {
         for(curvenum = 0; curvenum < searchData.length; curvenum++) {
             cd = searchData[curvenum];
 
@@ -467,6 +467,9 @@ function _hover(gd, evt, subplot, noHoverEvent) {
                         mode = mode ? 'closest' : 'y';
                     }
                 }
+            } else if(userXVal !== undefined && userYVal !== undefined) {
+                xval = userXVal;
+                yval = userYVal;
             } else {
                 xval = xvalArray[subploti];
                 yval = yvalArray[subploti];
@@ -625,6 +628,33 @@ function _hover(gd, evt, subplot, noHoverEvent) {
 
     hoverData.sort(function(d1, d2) { return d1.distance - d2.distance; });
 
+    // If in compare mode, select every point at position
+    if(['x', 'y'].indexOf(mode) !== -1) {
+        var xVal = hoverData[0].xVal;
+        var ax = hoverData[0].xa;
+        if(ax.type === 'category') xVal = ax._categoriesMap[xVal];
+        if(ax.type === 'date') xVal = ax.d2c(xVal);
+
+        var yVal = hoverData[0].yVal;
+        ax = hoverData[0].ya;
+        if(ax.type === 'category') yVal = ax._categoriesMap[yVal];
+        if(ax.type === 'date') yVal = ax.d2c(yVal);
+
+        findHoverPoints(xVal, yVal);
+
+        // Remove duplicated hoverData points
+        // note that d3 also filters identical points in the rendering steps
+        // TODO: use ES6 map
+        var repeated = {};
+        hoverData = hoverData.filter(function(hd) {
+            var key = hoverDataKey(hd);
+            if(!repeated[key]) {
+                repeated[key] = true;
+                return repeated[key];
+            }
+        });
+    }
+
     // lastly, emit custom hover/unhover events
     var oldhoverdata = gd._hoverdata;
     var newhoverdata = [];
@@ -701,6 +731,10 @@ function _hover(gd, evt, subplot, noHoverEvent) {
         xvals: xvalArray,
         yvals: yvalArray
     });
+}
+
+function hoverDataKey(d) {
+    return [d.trace.index, d.index, d.x0, d.y0, d.name, d.attr, d.xa, d.ya || ''].join(',');
 }
 
 var EXTRA_STRING_REGEX = /<extra>([\s\S]*)<\/extra>/;
@@ -1032,7 +1066,7 @@ function createHoverText(hoverData, opts, gd) {
         .data(hoverData, function(d) {
             // N.B. when multiple items have the same result key-function value,
             // only the first of those items in hoverData gets rendered
-            return [d.trace.index, d.index, d.x0, d.y0, d.name, d.attr, d.xa, d.ya || ''].join(',');
+            return hoverDataKey(d);
         });
     hoverLabels.enter().append('g')
         .classed('hovertext', true)
