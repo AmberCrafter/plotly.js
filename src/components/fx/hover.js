@@ -244,6 +244,7 @@ function _hover(gd, evt, subplot, noHoverEvent) {
     }
 
     var hovermode = evt.hovermode || fullLayout.hovermode;
+    var spikeOnlyOnHover = ['x unified', 'y unified'].indexOf(hovermode) !== -1;
 
     if(hovermode && !supportsCompare) hovermode = 'closest';
 
@@ -504,7 +505,7 @@ function _hover(gd, evt, subplot, noHoverEvent) {
             // Now if there is range to look in, find the points to draw the spikelines
             // Do it only if there is no hoverData
             if(hasCartesian && (spikedistance !== 0)) {
-                if(hoverData.length === 0) {
+                if(hoverData.length === 0 && !spikeOnlyOnHover) {
                     pointData.distance = spikedistance;
                     pointData.index = false;
                     var closestPoints = trace._module.hoverPoints(pointData, xval, yval, 'closest', fullLayout._hoverlayer);
